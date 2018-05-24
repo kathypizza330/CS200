@@ -1,0 +1,167 @@
+
+public class Equation {
+
+	private boolean debug;
+
+	private String nextToken;
+	private TokenIter itTokens;
+
+	DepGraph exprTree;
+
+	private void nextTok(String indent) {
+		if (itTokens.hasNext())
+			nextToken = itTokens.next();
+		else
+			nextToken = null;
+		// if (nextToken!= null && nextToken.equals(")")){
+		// nextTok(indent);}
+		if (debug)
+			System.out.println(indent + "next token: " + nextToken);
+	}
+
+	// equation = identifier "=" expression
+	public Equation(TokenIter iter, boolean debug) {
+		itTokens = iter;
+		this.debug = debug;
+		// put the first token from iter in nextToken
+		// initial indent ""
+		nextTok("");
+	}
+
+	// expr = term(( "+" | "-" )term)*
+	private void expr(String indent, DepGraph graph, String source) throws GraphException {
+		if (debug)
+			System.out.println(indent + "expr");
+
+		term(indent + " ", graph, source);
+		while (nextToken != null && (nextToken.equals("-") || nextToken.equals("+"))) {
+			
+			nextTok(indent + " ");
+			term(indent + " ", graph, source);
+
+		}
+	}
+
+	// term = factor(( "*" | "/" )factor)*
+	private void term(String indent, DepGraph graph, String source) throws GraphException {
+		if (debug)
+			System.out.println(indent + "term");
+		factor(indent + " ", graph, source);
+		while (nextToken != null && ((nextToken.equals("*") || nextToken.equals("/")))) {
+			nextTok(indent + " ");
+			factor(indent + " ", graph, source);
+		}
+	}
+
+	// factor = "-" factor | identifier | number | "(" expr ")"
+	private void factor(String indent, DepGraph graph, String source) throws GraphException {
+		if (debug)
+			System.out.println(indent + "factor");
+		// "-" factor
+		if (nextToken != null && nextToken.equals("-")) {
+			nextTok(indent + " ");
+			factor(indent + " ", graph, source);
+		}
+
+		// number
+		else if (nextToken != null && Character.isDigit(nextToken.charAt(0))) {
+			number(indent + " ", graph, source);
+		}
+
+		// "(" expr ")"
+		else if (nextToken != null && nextToken.equals("(")) {
+			nextTok(indent + " ");
+			expr(indent + " ", graph, source);
+			nextTok(indent + " ");
+		}
+
+		// identifier
+		else {
+			identifier(indent + " ", graph, source);
+		}
+	}
+
+	// identifier = [A-Za-z]([A-Za-z0-9])*
+	private String identifier(String indent, DepGraph graph, String source) throws GraphException {
+		if (debug)
+			System.out.println(indent + " identifier");
+		String result = null;
+		if (nextToken != null && ((nextToken.charAt(0) >= 'A' && nextToken.charAt(0) <= 'Z')
+				|| (nextToken.charAt(0) >= 'a' && nextToken.charAt(0) <= 'z'))) {
+			graph.addAdjList(nextToken);
+			if (!source.equals("")){
+				graph.addDest(source, nextToken);
+			}
+			result = nextToken;
+			nextTok(indent+" ");
+		} else {
+			error("Identifier expected");
+		}
+		return result;
+//		if (nextToken != null && ((nextToken.charAt(0) >= 'A' && nextToken.charAt(0) <= 'Z')
+//				|| (nextToken.charAt(0) >= 'a' && nextToken.charAt(0) <= 'z')
+//				|| (nextToken.charAt(0) >= '0' && nextToken.charAt(0) <= '9'))) {
+//			String id = nextToken;
+//			nextTok(indent);
+//			AdjList left1 = new AdjList(id);
+//			left1.addDest(left.getSource());
+//			left1.addDest(null);
+//			left = left1;
+//			
+//		}
+//		return left;
+	}
+
+	private void number(String indent, DepGraph graph, String source) throws GraphException {
+		if (debug)
+			System.out.println(indent + " number");
+		if (nextToken != null && Character.isDigit(nextToken.charAt(0))) {
+			nextTok(indent);
+			return;
+		} else {
+			error("number expected"); // for java type checker
+		}
+	}
+
+	private void error(String errMess) throws GraphException {
+		throw new GraphException(errMess);
+
+	}
+
+	// line parses a line: lhs "=" expr
+	// lhs is an identifier
+	// and stores an IdVal (lhs, value) in the symbol table
+	public void line(DepGraph symbolTable) throws GraphException {
+		// BSTNode root;
+		exprTree = null;
+		if (nextToken == null)
+			return;
+		else {
+			if (debug)
+				System.out.println("line");
+			// scan left hand side String lhs
+			// if it is not an identifier
+			// call error("Identifier expected");
+			String lhs = null;
+			lhs = identifier("", symbolTable, "");
+			if (lhs != null) {
+				if (nextToken.equals("=")) {
+					nextTok(" ");
+					expr("",symbolTable, lhs);
+
+					if (nextToken != null) {
+						error("end of line expected");
+						return;
+					} else
+						return;
+				} else {
+					error("= expected");
+					return;
+				}
+			} else {
+				error("unexpected end of line");
+				return;
+			}
+		}
+	}
+}

@@ -1,0 +1,134 @@
+import java.util.ArrayList;
+import java.util.Arrays;
+
+public class DepGraph {
+	// n: number of nodes
+	private int n;
+	// number of edges
+	private int m;
+
+	private ArrayList<Integer> tempIndegree;
+	private ArrayList<String> sources;
+
+	// graph has adjLists mapping sources to destination lists
+	private ArrayList<AdjList> graph;
+	private boolean debug;
+
+	public DepGraph(boolean debug) {
+		graph = new ArrayList<AdjList>();
+		this.debug = debug;
+	}
+
+	public String toString() {
+		String res = "Dependence Graph: " + n + " nodes, " + m + " edges\n";
+		for (int i = 0; i < graph.size(); i++)
+			res += i + ": " + graph.get(i) + "\n";
+		return res;
+	}
+
+	// return whether graph contains the source
+	private boolean graphContains(String source) {
+		for (int i = 0; i < graph.size(); i++) {
+			if (graph.get(i).getSource().equals(source))
+				return true;
+		}
+		return false;
+	}
+
+	// add **new** source entry with empty destList to end of graph
+	public void addAdjList(String source) throws GraphException {
+		AdjList s = new AdjList(source);
+		if (graphContains(source))
+			throw new GraphException(source + " already defined!");
+		else {
+			graph.add(s);
+			n++;
+		}
+	}
+
+	// get the adjList of source
+	private AdjList getAdjList(String source) throws GraphException {
+		if (!graphContains(source))
+			throw new GraphException(source + " undefined!");
+		else {
+			for (int i = 0; i < graph.size(); i++) {
+				if (graph.get(i).getSource().equals(source))
+					return graph.get(i);
+			}
+			return null;
+		}
+	}
+
+	// if dest not in the source AdjList add it to the source adjList
+	// increment inDegree in dest adjList
+	public void addDest(String source, String dest) throws GraphException {
+		if (!getAdjList(source).contains(dest)) {
+			getAdjList(source).addDest(dest);
+			getAdjList(dest).incrInDegree();
+			m++;
+		}
+
+	}
+
+	public void topoPrint() throws GraphException {
+		// copy all inDegrees to temporary inDegrees, as these will be
+		// decremented to zero
+		// repeat
+		tempIndegree = new ArrayList<Integer>();
+		sources = new ArrayList<String>();
+		for (int i = 0; i < graph.size(); i++) {
+			tempIndegree.add(graph.get(i).getIndegree());
+		}
+		while (sources.size() != graph.size()) {
+			// 1. find sources with temporary inDegree 0 (making sure only new
+			// ones are found, see step 3)
+			ArrayList<String> sources1 = new ArrayList<String>();
+			for (int i = 0; i < graph.size(); i++) {
+				if (tempIndegree.get(i).equals(0) && !sources.contains(graph.get(i).getSource())) {
+					String tempSource = graph.get(i).getSource();
+					sources.add(tempSource);
+					sources1.add(tempSource);
+					for (int j = 0; j<graph.get(i).size(); j++){
+						String dest = graph.get(i).getDest(j);
+						int index = graph.indexOf(dest);
+						tempIndegree.set(index, tempIndegree.get(index)-1);
+					}
+				}
+			}
+			System.out.println(tempIndegree);
+			if (sources1.isEmpty()) break;
+			System.out.println(sources1);
+		}
+		// 2. print these on one line in definition order in format [SOURCE1,
+		// SOURCE2, ... , SOURCEn]
+		
+		// 3. decrement the temporary inDegree of all successors of the sources
+		// found above
+		// for (int i = 0; i<)
+	}
+
+	public static void main(String[] args) throws GraphException {
+		DepGraph dG = new DepGraph(false);
+		dG.addAdjList("a");
+		dG.addAdjList("b");
+		dG.addAdjList("c");
+		dG.addAdjList("d");
+		dG.addAdjList("e");
+		// dG.addAdjList("e"); // checking graph exception
+
+		dG.addDest("a", "c");
+		dG.addDest("a", "d");
+
+		dG.addDest("b", "c");
+		dG.addDest("b", "d");
+
+		dG.addDest("c", "d");
+
+		dG.addDest("c", "e");
+		dG.addDest("d", "e");
+
+		System.out.println(dG);
+
+	}
+
+}
